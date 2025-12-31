@@ -1,9 +1,9 @@
-from fasthtml.common import *
-from data.content import blog_posts
+from fasthtml.common import *  # pyright: ignore[reportMissingImports]
+from data.blog_loader import get_all_posts
 
 def BlogSection():
     """Blog section with recent posts preview."""
-    recent_posts = blog_posts[:3]  # Show only 3 most recent
+    recent_posts = get_all_posts()[:3]  # Show only 3 most recent
 
     return ft_hx('section',
         Div(

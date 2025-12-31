@@ -35,13 +35,13 @@ def Page(*children, title=None):
 def Navbar():
     """Fixed navigation bar with smooth scroll links."""
     nav_items = [
-        ('Inicio', '#hero'),
-        ('Experiencia', '#experience'),
-        ('Skills', '#skills'),
-        ('Proyectos', '#projects'),
-        ('Sobre mí', '#about'),
-        ('Blog', '#blog'),
-        ('Contacto', '#contact'),
+        ('Inicio', '/#hero'),
+        ('Experiencia', '/#experience'),
+        ('Skills', '/#skills'),
+        ('Proyectos', '/#projects'),
+        ('Sobre mí', '/#about'),
+        ('Blog', '/#blog'),
+        ('Contacto', '/#contact'),
     ]
 
     return Nav(

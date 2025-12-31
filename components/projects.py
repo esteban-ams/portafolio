@@ -1,10 +1,11 @@
 from fasthtml.common import *
-from data.content import projects_data
+from data.project_loader import get_all_projects, get_featured_projects
 
 def Projects():
     """Projects showcase section."""
-    featured = [p for p in projects_data if p.get('featured')]
-    other = [p for p in projects_data if not p.get('featured')]
+    all_projects = get_all_projects()
+    featured = [p for p in all_projects if p.get('featured')]
+    other = [p for p in all_projects if not p.get('featured')]
 
     return ft_hx('section',
         Div(
@@ -57,7 +58,7 @@ def FeaturedProject(project, idx):
             Span('Proyecto Destacado', cls='project-label'),
             H3(project['title'], cls='project-title'),
             Div(
-                P(project['description']),
+                P(project['excerpt']),
                 cls='project-description'
             ),
 
@@ -69,6 +70,11 @@ def FeaturedProject(project, idx):
 
             # Links
             Div(
+                A(
+                    'Ver detalles →',
+                    href=f'/projects/{project["slug"]}',
+                    cls='project-link project-details-link'
+                ),
                 A(
                     NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>'),
                     href=project['github'],
@@ -98,47 +104,42 @@ def FeaturedProject(project, idx):
     )
 
 def ProjectCard(project, idx):
-    """Smaller project card for grid layout."""
+    """Clean, minimal project card for grid layout."""
     return Div(
-        # Card header with folder icon
-        Div(
-            NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'),
+        # Gold accent bar at top
+        Div(cls='mini-card-accent'),
 
-            # Links
+        # Card inner content
+        Div(
+            # Header: Title + GitHub link
             Div(
+                H4(project['title'], cls='mini-card-title'),
                 A(
-                    NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>'),
+                    NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>'),
                     href=project['github'],
                     target='_blank',
                     rel='noopener',
-                    cls='project-card-link'
-                ) if project.get('github') else '',
-                A(
-                    NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>'),
-                    href=project['demo'],
-                    target='_blank',
-                    rel='noopener',
-                    cls='project-card-link'
-                ) if project.get('demo') else '',
-                cls='project-card-links'
+                    cls='mini-card-github'
+                ) if project.get('github') else None,
+                cls='mini-card-header'
             ),
 
-            cls='project-card-header'
+            # Description
+            P(project['excerpt'], cls='mini-card-desc'),
+
+            # Footer: Tech tags + Link
+            Div(
+                Div(
+                    *[Span(tech, cls='mini-card-tag') for tech in project['technologies'][:4]],
+                    cls='mini-card-tags'
+                ),
+                A('Ver más →', href=f'/projects/{project["slug"]}', cls='mini-card-link'),
+                cls='mini-card-footer'
+            ),
+
+            cls='mini-card-body'
         ),
 
-        # Card content
-        H4(project['title'], cls='project-card-title'),
-        P(project['description'], cls='project-card-description'),
-
-        # Technologies
-        Div(
-            *[Span(tech, cls='tech-tag-small') for tech in project['technologies']],
-            cls='project-card-tech'
-        ),
-
-        cls='project-card',
-        **{'x-data': '{ show: false }',
-           'x-intersect': 'show = true',
-           ':class': "{ 'visible': show }",
-           'style': f'--delay: {idx * 100}ms'}
+        cls='mini-project-card',
+        style=f'--card-delay: {idx * 0.1}s'
     )

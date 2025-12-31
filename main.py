@@ -1,6 +1,10 @@
 from fasthtml.common import *
 from starlette.responses import FileResponse, Response
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from components.layout import Page, Navbar
 from components.hero import Hero
@@ -55,14 +59,44 @@ def get(slug: str):
     from pages.blog import blog_post
     return blog_post(slug)
 
+# Project routes
+@rt('/projects')
+def get():
+    from pages.projects import projects_list
+    return projects_list()
+
+@rt('/projects/{slug}')
+def get(slug: str):
+    from pages.projects import project_detail
+    return project_detail(slug)
+
 # Contact form handler
 @rt('/contact')
 async def post(name: str, email: str, message: str):
-    # Here you would handle the contact form submission
-    # For now, return a success message via HTMX
-    return Div(
-        P('¡Gracias por contactarme! Te responderé pronto.', cls='success-message'),
-        id='contact-form-response'
-    )
+    from services.email import send_contact_email, ContactMessage
+
+    # Basic validation
+    if not name or not email or not message:
+        return Div(
+            P('Por favor completa todos los campos.', cls='error-message'),
+            id='contact-form-response'
+        )
+
+    # Send email
+    msg = ContactMessage(name=name.strip(), email=email.strip(), message=message.strip())
+    success, error = send_contact_email(msg)
+
+    if success:
+        return Div(
+            P('¡Gracias por contactarme! Te responderé pronto.', cls='success-message'),
+            id='contact-form-response'
+        )
+    else:
+        # Log error but show friendly message
+        print(f"Email error: {error}")
+        return Div(
+            P('Hubo un problema al enviar el mensaje. Puedes escribirme directamente a mi email.', cls='error-message'),
+            id='contact-form-response'
+        )
 
 serve()

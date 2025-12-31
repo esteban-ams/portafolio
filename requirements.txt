@@ -1,1 +1,6 @@
 python-fasthtml>=0.6.0
+markdown>=3.5
+pygments>=2.15
+python-frontmatter>=1.0
+resend>=2.0
+python-dotenv>=1.0

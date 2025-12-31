@@ -40,8 +40,8 @@ def Hero():
 
             # CTA Buttons
             Div(
-                A(hero_content['cta_primary'], href='#projects', cls='btn btn-primary'),
-                A(hero_content['cta_secondary'], href='#contact', cls='btn btn-secondary'),
+                A(hero_content['cta_primary'], href='/#projects', cls='btn btn-primary'),
+                A(hero_content['cta_secondary'], href='/#contact', cls='btn btn-secondary'),
                 cls='hero-cta',
                 **{'x-data': '{ show: false }',
                    'x-init': 'setTimeout(() => show = true, 1000)',
@@ -80,7 +80,7 @@ def Hero():
             A(
                 Span('Scroll', cls='scroll-text'),
                 Div(cls='scroll-arrow'),
-                href='#experience',
+                href='/#experience',
                 cls='scroll-indicator'
             ),
             cls='hero-scroll'

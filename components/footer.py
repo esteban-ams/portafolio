@@ -21,10 +21,10 @@ def Footer():
                 Div(
                     H4('Enlaces', cls='footer-heading'),
                     Nav(
-                        A('Inicio', href='#hero'),
-                        A('Proyectos', href='#projects'),
+                        A('Inicio', href='/#hero'),
+                        A('Proyectos', href='/#projects'),
                         A('Blog', href='/blog'),
-                        A('Contacto', href='#contact'),
+                        A('Contacto', href='/#contact'),
                         cls='footer-nav'
                     ),
                     cls='footer-links'
