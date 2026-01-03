@@ -1,0 +1,73 @@
+nav:
+  home: "Inicio"
+  experience: "Experiencia"
+  skills: "Skills"
+  projects: "Proyectos"
+  about: "Sobre mí"
+  blog: "Blog"
+  contact: "Contacto"
+
+hero:
+  greeting: "Hola, soy"
+  role: "Ingeniero de Software"
+  cta_projects: "Ver proyectos"
+  cta_contact: "Contactar"
+  scroll_hint: "Scroll para explorar"
+
+experience:
+  label: "Trayectoria"
+  title: "Experiencia Profesional"
+  present: "Presente"
+
+skills:
+  label: "Habilidades"
+  title: "Stack Tecnológico"
+
+projects:
+  label: "Portfolio"
+  title: "Proyectos Destacados"
+  featured_label: "Proyecto Destacado"
+  other_title: "Otros Proyectos"
+  view_details: "Ver detalles"
+  view_more: "Ver más"
+  view_code: "Ver código"
+  view_demo: "Ver demo"
+  back_to_projects: "Volver a proyectos"
+  technologies: "Tecnologías"
+  all_projects: "Todos los Proyectos"
+
+about:
+  label: "Sobre mí"
+  title: "Conóceme"
+  interests_title: "Cuando no estoy programando..."
+
+blog:
+  label: "Blog"
+  title: "Artículos Recientes"
+  read_more: "Leer más"
+  view_all: "Ver todos los artículos"
+  back_to_blog: "Volver al blog"
+  all_posts: "Todos los Artículos"
+  reading_time: "min de lectura"
+
+contact:
+  label: "Contacto"
+  title: "Hablemos"
+  description: "¿Tienes un proyecto en mente o simplemente quieres saludar? Mi bandeja de entrada está siempre abierta."
+  name: "Nombre"
+  name_placeholder: "Tu nombre"
+  email: "Email"
+  email_placeholder: "tu@email.com"
+  message: "Mensaje"
+  message_placeholder: "¿En qué puedo ayudarte?"
+  send: "Enviar mensaje"
+  success: "¡Gracias por contactarme! Te responderé pronto."
+  error: "Hubo un problema al enviar el mensaje. Puedes escribirme directamente a mi email."
+  error_fields: "Por favor completa todos los campos."
+  direct_contact: "O contáctame directamente"
+
+footer:
+  rights: "Todos los derechos reservados"
+  built_with: "Construido con"
+  quick_links: "Enlaces Rápidos"
+  connect: "Conectar"

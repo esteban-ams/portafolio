@@ -3,7 +3,7 @@ Project loader from Markdown files.
 
 Similar to blog posts, projects are stored as markdown files with frontmatter:
 
-content/projects/
+content/{lang}/projects/
 ├── erp-market.md
 ├── road-report.md
 ├── agencyflow.md
@@ -39,8 +39,13 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from functools import lru_cache
 
-# Path to projects content
-PROJECTS_DIR = Path(__file__).resolve().parent.parent / 'content' / 'projects'
+# Base content path
+CONTENT_DIR = Path(__file__).resolve().parent.parent / 'content'
+
+
+def get_projects_dir(lang: str = 'es') -> Path:
+    """Get projects directory for specified language."""
+    return CONTENT_DIR / lang / 'projects'
 
 
 def get_markdown_processor():
@@ -64,11 +69,10 @@ def get_markdown_processor():
 
 def strip_first_h1(html: str) -> str:
     """Remove the first h1 tag from HTML to avoid title duplication."""
-    # Match and remove the first h1 tag and its content
     return re.sub(r'^(\s*<h1[^>]*>.*?</h1>\s*)', '', html, count=1, flags=re.DOTALL)
 
 
-def load_project(filepath: Path) -> Optional[Dict]:
+def load_project(filepath: Path, lang: str = 'es') -> Optional[Dict]:
     """Load a single project from a markdown file."""
     try:
         project = frontmatter.load(filepath)
@@ -93,36 +97,43 @@ def load_project(filepath: Path) -> Optional[Dict]:
             'content': project.content,  # Raw markdown
             'html': html_content,         # Rendered HTML
             'filepath': str(filepath),
+            'lang': lang,
         }
     except Exception as e:
         print(f"Error loading project {filepath}: {e}")
         return None
 
 
-def get_all_projects(refresh: bool = False) -> List[Dict]:
+def get_all_projects(lang: str = None, refresh: bool = False) -> List[Dict]:
     """
     Get all projects.
 
     Args:
+        lang: Language code ('es', 'en'). If None, uses current language.
         refresh: If True, bypass cache and reload from disk.
     """
+    if lang is None:
+        from services.i18n import get_language
+        lang = get_language()
+
     if refresh:
         _get_projects_cached.cache_clear()
-    return _get_projects_cached()
+    return _get_projects_cached(lang)
 
 
-@lru_cache(maxsize=1)
-def _get_projects_cached() -> List[Dict]:
-    """Cached version of project loading."""
+@lru_cache(maxsize=4)
+def _get_projects_cached(lang: str) -> List[Dict]:
+    """Cached version of project loading (per language)."""
     projects = []
+    projects_dir = get_projects_dir(lang)
 
-    if not PROJECTS_DIR.exists():
-        PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    if not projects_dir.exists():
+        projects_dir.mkdir(parents=True, exist_ok=True)
         return projects
 
     # Find all .md files in projects directory
-    for filepath in PROJECTS_DIR.glob('*.md'):
-        project = load_project(filepath)
+    for filepath in projects_dir.glob('*.md'):
+        project = load_project(filepath, lang)
         if project:
             projects.append(project)
 
@@ -131,12 +142,12 @@ def _get_projects_cached() -> List[Dict]:
     return projects
 
 
-def get_featured_projects() -> List[Dict]:
+def get_featured_projects(lang: str = None) -> List[Dict]:
     """Get only featured projects."""
-    return [p for p in get_all_projects() if p['featured']]
+    return [p for p in get_all_projects(lang) if p['featured']]
 
 
-def get_project_by_slug(slug: str) -> Optional[Dict]:
+def get_project_by_slug(slug: str, lang: str = None) -> Optional[Dict]:
     """Get a single project by its slug."""
-    projects = get_all_projects()
+    projects = get_all_projects(lang)
     return next((p for p in projects if p['slug'] == slug), None)

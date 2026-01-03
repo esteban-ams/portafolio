@@ -1,5 +1,6 @@
 from fasthtml.common import *
 from data.content import site_config
+from services.i18n import t, get_language
 
 def Page(*children, title=None):
     """Main page wrapper with HTML structure.
@@ -8,6 +9,8 @@ def Page(*children, title=None):
         *children: Page content components
         title: Page title
     """
+    lang = get_language()
+
     return Html(
         Head(
             Title(title or site_config['title']),
@@ -28,20 +31,24 @@ def Page(*children, title=None):
             *children,
             cls='page'
         ),
-        lang='es',
+        lang=lang,
         **{'data-theme': 'geometric'}
     )
 
 def Navbar():
     """Fixed navigation bar with smooth scroll links."""
+    lang = get_language()
+    other_lang = 'en' if lang == 'es' else 'es'
+    lang_label = 'EN' if lang == 'es' else 'ES'
+
     nav_items = [
-        ('Inicio', '/#hero'),
-        ('Experiencia', '/#experience'),
-        ('Skills', '/#skills'),
-        ('Proyectos', '/#projects'),
-        ('Sobre mí', '/#about'),
-        ('Blog', '/#blog'),
-        ('Contacto', '/#contact'),
+        (t('nav.home'), '/#hero'),
+        (t('nav.experience'), '/#experience'),
+        (t('nav.skills'), '/#skills'),
+        (t('nav.projects'), '/#projects'),
+        (t('nav.about'), '/#about'),
+        (t('nav.blog'), '/#blog'),
+        (t('nav.contact'), '/#contact'),
     ]
 
     return Nav(
@@ -49,6 +56,8 @@ def Navbar():
             A(site_config['name'].split()[0], href='/', cls='nav-logo'),
             Div(
                 *[A(name, href=href, cls='nav-link') for name, href in nav_items],
+                # Language switcher
+                A(lang_label, href=f'?lang={other_lang}', cls='nav-link lang-switch', title=f'Switch to {other_lang.upper()}'),
                 cls='nav-links',
                 **{'x-data': '{ open: false }'}
             ),

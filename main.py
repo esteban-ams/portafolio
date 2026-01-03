@@ -1,10 +1,16 @@
 from fasthtml.common import *
 from starlette.responses import FileResponse, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
+import os
 
 # Load environment variables
 load_dotenv()
+
+# Production settings
+DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+PORT = int(os.getenv('PORT', 5001))
 
 from components.layout import Page, Navbar
 from components.hero import Hero
@@ -16,14 +22,42 @@ from components.blog import BlogSection
 from components.contact import Contact
 from components.footer import Footer
 from data.content import site_config
+from services.i18n import set_language, detect_language_from_header, get_language, SUPPORTED_LANGUAGES
 
 # Get the absolute path to the static folder
 STATIC_PATH = Path(__file__).resolve().parent / 'static'
 
 app, rt = fast_app(
     pico=False,
-    debug=True
+    debug=DEBUG
 )
+
+
+# Language detection middleware
+class LanguageMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # Priority: 1) ?lang= param, 2) cookie, 3) Accept-Language header
+        lang = request.query_params.get('lang')
+
+        if not lang or lang not in SUPPORTED_LANGUAGES:
+            lang = request.cookies.get('lang')
+
+        if not lang or lang not in SUPPORTED_LANGUAGES:
+            accept_lang = request.headers.get('accept-language')
+            lang = detect_language_from_header(accept_lang)
+
+        set_language(lang)
+
+        response = await call_next(request)
+
+        # Set cookie if lang was specified in query param
+        if request.query_params.get('lang') in SUPPORTED_LANGUAGES:
+            response.set_cookie('lang', lang, max_age=60*60*24*365)  # 1 year
+
+        return response
+
+
+app.add_middleware(LanguageMiddleware)
 
 # Explicit route for static files
 @rt('/static/{path:path}')
@@ -74,11 +108,12 @@ def get(slug: str):
 @rt('/contact')
 async def post(name: str, email: str, message: str):
     from services.email import send_contact_email, ContactMessage
+    from services.i18n import t
 
     # Basic validation
     if not name or not email or not message:
         return Div(
-            P('Por favor completa todos los campos.', cls='error-message'),
+            P(t('contact.error_fields'), cls='error-message'),
             id='contact-form-response'
         )
 
@@ -88,15 +123,16 @@ async def post(name: str, email: str, message: str):
 
     if success:
         return Div(
-            P('¡Gracias por contactarme! Te responderé pronto.', cls='success-message'),
+            P(t('contact.success'), cls='success-message'),
             id='contact-form-response'
         )
     else:
         # Log error but show friendly message
         print(f"Email error: {error}")
         return Div(
-            P('Hubo un problema al enviar el mensaje. Puedes escribirme directamente a mi email.', cls='error-message'),
+            P(t('contact.error'), cls='error-message'),
             id='contact-form-response'
         )
 
-serve()
+if __name__ == "__main__":
+    serve(host='0.0.0.0', port=PORT, reload=DEBUG)

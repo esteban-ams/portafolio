@@ -1,5 +1,6 @@
 from fasthtml.common import *
 from data.project_loader import get_all_projects, get_featured_projects
+from services.i18n import t
 
 def Projects():
     """Projects showcase section."""
@@ -11,8 +12,8 @@ def Projects():
         Div(
             # Section header
             Div(
-                Span('Portfolio', cls='section-label'),
-                H2('Proyectos Destacados', cls='section-title'),
+                Span(t('projects.label'), cls='section-label'),
+                H2(t('projects.title'), cls='section-title'),
                 cls='section-header'
             ),
 
@@ -24,7 +25,7 @@ def Projects():
 
             # Other projects (if any)
             Div(
-                H3('Otros Proyectos', cls='other-projects-title') if other else '',
+                H3(t('projects.other_title'), cls='other-projects-title') if other else '',
                 Div(
                     *[ProjectCard(project, idx) for idx, project in enumerate(other)],
                     cls='projects-grid'
@@ -55,7 +56,7 @@ def FeaturedProject(project, idx):
 
         # Project content
         Div(
-            Span('Proyecto Destacado', cls='project-label'),
+            Span(t('projects.featured_label'), cls='project-label'),
             H3(project['title'], cls='project-title'),
             Div(
                 P(project['excerpt']),
@@ -71,7 +72,7 @@ def FeaturedProject(project, idx):
             # Links
             Div(
                 A(
-                    'Ver detalles →',
+                    t('projects.view_details') + ' →',
                     href=f'/projects/{project["slug"]}',
                     cls='project-link project-details-link'
                 ),
@@ -81,7 +82,7 @@ def FeaturedProject(project, idx):
                     target='_blank',
                     rel='noopener',
                     cls='project-link',
-                    title='Ver código'
+                    title=t('projects.view_code')
                 ) if project.get('github') else '',
                 A(
                     NotStr('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>'),
@@ -89,7 +90,7 @@ def FeaturedProject(project, idx):
                     target='_blank',
                     rel='noopener',
                     cls='project-link',
-                    title='Ver demo'
+                    title=t('projects.view_demo')
                 ) if project.get('demo') else '',
                 cls='project-links'
             ),
@@ -133,7 +134,7 @@ def ProjectCard(project, idx):
                     *[Span(tech, cls='mini-card-tag') for tech in project['technologies'][:4]],
                     cls='mini-card-tags'
                 ),
-                A('Ver más →', href=f'/projects/{project["slug"]}', cls='mini-card-link'),
+                A(t('projects.view_more') + ' →', href=f'/projects/{project["slug"]}', cls='mini-card-link'),
                 cls='mini-card-footer'
             ),
 

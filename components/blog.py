@@ -76,7 +76,7 @@ def BlogListCard(post):
             Div(
                 Time(post['date'], datetime=post['date']),
                 Span('·', cls='separator'),
-                Span('5 min lectura', cls='reading-time'),
+                Span('5 min', cls='reading-time'),
                 cls='blog-list-meta'
             ),
 

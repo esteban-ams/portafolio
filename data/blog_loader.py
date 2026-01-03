@@ -3,7 +3,7 @@ Blog post loader from Markdown files.
 
 Supports nested folder structure for organization:
 
-content/blog/
+content/{lang}/blog/
 ├── fasthtml/
 │   ├── introduction.md
 │   ├── deployment.md
@@ -34,8 +34,13 @@ from typing import List, Dict, Optional
 from functools import lru_cache
 from textwrap import dedent
 
-# Path to blog content
-BLOG_DIR = Path(__file__).resolve().parent.parent / 'content' / 'blog'
+# Base content path
+CONTENT_DIR = Path(__file__).resolve().parent.parent / 'content'
+
+
+def get_blog_dir(lang: str = 'es') -> Path:
+    """Get blog directory for specified language."""
+    return CONTENT_DIR / lang / 'blog'
 
 
 def get_markdown_processor():
@@ -62,7 +67,7 @@ def strip_first_h1(html: str) -> str:
     return re.sub(r'^(\s*<h1[^>]*>.*?</h1>\s*)', '', html, count=1, flags=re.DOTALL)
 
 
-def load_post(filepath: Path) -> Optional[Dict]:
+def load_post(filepath: Path, lang: str = 'es') -> Optional[Dict]:
     """Load a single blog post from a markdown file."""
     try:
         post = frontmatter.load(filepath)
@@ -75,7 +80,8 @@ def load_post(filepath: Path) -> Optional[Dict]:
         html_content = strip_first_h1(html_content)
 
         # Determine category from folder structure
-        relative_path = filepath.relative_to(BLOG_DIR)
+        blog_dir = get_blog_dir(lang)
+        relative_path = filepath.relative_to(blog_dir)
         if len(relative_path.parts) > 1:
             # File is in a subfolder: blog/category/post.md
             folder_category = relative_path.parts[0].replace('-', ' ').title()
@@ -93,36 +99,44 @@ def load_post(filepath: Path) -> Optional[Dict]:
             'content': post.content,  # Raw markdown
             'html': html_content,      # Rendered HTML
             'filepath': str(filepath),
+            'lang': lang,
         }
     except Exception as e:
         print(f"Error loading {filepath}: {e}")
         return None
 
 
-def get_all_posts(refresh: bool = False) -> List[Dict]:
+def get_all_posts(lang: str = None, refresh: bool = False) -> List[Dict]:
     """
     Get all blog posts sorted by date (newest first).
 
     Args:
+        lang: Language code ('es', 'en'). If None, uses current language.
         refresh: If True, bypass cache and reload from disk.
     """
+    if lang is None:
+        from services.i18n import get_language
+        lang = get_language()
+
     if refresh:
         _get_posts_cached.cache_clear()
-    return _get_posts_cached()
+    return _get_posts_cached(lang)
 
 
-@lru_cache(maxsize=1)
-def _get_posts_cached() -> List[Dict]:
-    """Cached version of post loading."""
+@lru_cache(maxsize=4)
+def _get_posts_cached(lang: str) -> List[Dict]:
+    """Cached version of post loading (per language)."""
     posts = []
+    blog_dir = get_blog_dir(lang)
+    print(f"[blog_loader] Loading posts for lang={lang} from {blog_dir}")
 
-    if not BLOG_DIR.exists():
-        BLOG_DIR.mkdir(parents=True, exist_ok=True)
+    if not blog_dir.exists():
+        blog_dir.mkdir(parents=True, exist_ok=True)
         return posts
 
     # Recursively find all .md files in blog directory and subdirectories
-    for filepath in BLOG_DIR.rglob('*.md'):
-        post = load_post(filepath)
+    for filepath in blog_dir.rglob('*.md'):
+        post = load_post(filepath, lang)
         if post:
             posts.append(post)
 
@@ -131,9 +145,9 @@ def _get_posts_cached() -> List[Dict]:
     return posts
 
 
-def get_post_by_slug(slug: str) -> Optional[Dict]:
+def get_post_by_slug(slug: str, lang: str = None) -> Optional[Dict]:
     """Get a single post by its slug."""
-    posts = get_all_posts()
+    posts = get_all_posts(lang)
     return next((p for p in posts if p['slug'] == slug), None)
 
 
@@ -147,3 +161,13 @@ def render_markdown(content: str) -> str:
 def get_blog_posts() -> List[Dict]:
     """Alias for get_all_posts for backwards compatibility."""
     return get_all_posts()
+
+
+def clear_blog_cache():
+    """Clear the blog posts cache (useful for development)."""
+    _get_posts_cached.cache_clear()
+    print("[blog_loader] Cache cleared")
+
+
+# Clear cache on module load to ensure fresh data on server restart
+clear_blog_cache()

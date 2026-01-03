@@ -1,5 +1,6 @@
 from fasthtml.common import *
 from data.content import hero_content, site_config
+from services.i18n import t
 
 def Hero():
     """Hero section with animated introduction."""
@@ -7,7 +8,7 @@ def Hero():
         Div(
             # Animated greeting
             Div(
-                Span(hero_content['greeting'], cls='hero-greeting'),
+                Span(t('hero.greeting'), cls='hero-greeting'),
                 H1(hero_content['name'], cls='hero-name'),
                 cls='hero-intro',
                 **{'x-data': '{ show: false }',
@@ -40,8 +41,8 @@ def Hero():
 
             # CTA Buttons
             Div(
-                A(hero_content['cta_primary'], href='/#projects', cls='btn btn-primary'),
-                A(hero_content['cta_secondary'], href='/#contact', cls='btn btn-secondary'),
+                A(t('hero.cta_projects'), href='/#projects', cls='btn btn-primary'),
+                A(t('hero.cta_contact'), href='/#contact', cls='btn btn-secondary'),
                 cls='hero-cta',
                 **{'x-data': '{ show: false }',
                    'x-init': 'setTimeout(() => show = true, 1000)',
@@ -78,7 +79,7 @@ def Hero():
         # Scroll indicator
         Div(
             A(
-                Span('Scroll', cls='scroll-text'),
+                Span(t('hero.scroll_hint'), cls='scroll-text'),
                 Div(cls='scroll-arrow'),
                 href='/#experience',
                 cls='scroll-indicator'

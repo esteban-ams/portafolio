@@ -1,0 +1,73 @@
+nav:
+  home: "Home"
+  experience: "Experience"
+  skills: "Skills"
+  projects: "Projects"
+  about: "About"
+  blog: "Blog"
+  contact: "Contact"
+
+hero:
+  greeting: "Hi, I'm"
+  role: "Software Engineer"
+  cta_projects: "View projects"
+  cta_contact: "Get in touch"
+  scroll_hint: "Scroll to explore"
+
+experience:
+  label: "Career"
+  title: "Professional Experience"
+  present: "Present"
+
+skills:
+  label: "Skills"
+  title: "Tech Stack"
+
+projects:
+  label: "Portfolio"
+  title: "Featured Projects"
+  featured_label: "Featured Project"
+  other_title: "Other Projects"
+  view_details: "View details"
+  view_more: "View more"
+  view_code: "View code"
+  view_demo: "View demo"
+  back_to_projects: "Back to projects"
+  technologies: "Technologies"
+  all_projects: "All Projects"
+
+about:
+  label: "About"
+  title: "Get to Know Me"
+  interests_title: "When I'm not coding..."
+
+blog:
+  label: "Blog"
+  title: "Recent Articles"
+  read_more: "Read more"
+  view_all: "View all articles"
+  back_to_blog: "Back to blog"
+  all_posts: "All Articles"
+  reading_time: "min read"
+
+contact:
+  label: "Contact"
+  title: "Let's Talk"
+  description: "Have a project in mind or just want to say hi? My inbox is always open."
+  name: "Name"
+  name_placeholder: "Your name"
+  email: "Email"
+  email_placeholder: "you@email.com"
+  message: "Message"
+  message_placeholder: "How can I help you?"
+  send: "Send message"
+  success: "Thanks for reaching out! I'll get back to you soon."
+  error: "There was a problem sending your message. Feel free to email me directly."
+  error_fields: "Please fill in all fields."
+  direct_contact: "Or contact me directly"
+
+footer:
+  rights: "All rights reserved"
+  built_with: "Built with"
+  quick_links: "Quick Links"
+  connect: "Connect"

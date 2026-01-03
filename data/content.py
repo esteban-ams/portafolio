@@ -6,9 +6,9 @@ site_config = {
     'description': 'Ingeniero en Computacion especializado en arquitectura de software, sistemas distribuidos y soluciones full-stack con Python.',
     'name': 'Esteban Martinez',
     'role': 'Software Engineer',
-    'email': 'esteban@email.com',  # TODO: Update with real email
-    'github': 'https://github.com/estebanmartinezsoto',
-    'linkedin': 'https://linkedin.com/in/estebanmartinezsoto',
+    'email': 'esteban.ams95@gmail.com',  # TODO: Update with real email
+    'github': 'https://github.com/esteban-ams',
+    'linkedin': 'https://www.linkedin.com/in/esteban-mart%C3%ADnez-4b1b32137/',
     'twitter': None,
 }
 
@@ -114,11 +114,13 @@ projects_data = [
 ]
 
 about_content = {
-    'intro': 'Ingeniero en Computacion apasionado por resolver problemas complejos.',
+    'intro': 'Soy desarrollador de software con más de 6 años de experiencia ayudando a negocios a trabajar de forma más inteligente.',
     'paragraphs': [
-        'Me especializo en construir sistemas empresariales completos: desde ERPs con facturacion electronica hasta plataformas SaaS multi-tenant. Disfruto trabajar en la interseccion entre arquitectura de software, integraciones complejas y experiencia de usuario.',
-        'Mi stack principal es Python (Django, FastAPI, FastHTML) complementado con Flutter para movil. Tengo experiencia en machine learning aplicado, pipelines de datos con Kafka, y bases de datos vectoriales para busqueda semantica.',
-        'Creo en el software que resuelve problemas reales. Cada proyecto que construyo busca simplificar procesos, automatizar tareas repetitivas, o hacer accesible informacion que antes era dificil de obtener.',
+        '¿Qué significa eso en la práctica? Creo herramientas digitales que te ahorran tiempo y dolores de cabeza:',
+        'Sistemas para administrar tu negocio — control de inventario, ventas, clientes, facturación... todo en un solo lugar, accesible desde tu computadora o celular.',
+        'Automatización de tareas repetitivas — esas cosas que haces a mano todos los días y te quitan horas que podrías usar en lo que realmente importa.',
+        'Aplicaciones a la medida — si tu negocio tiene una necesidad específica que ningún software existente resuelve, lo construimos juntos.',
+        'No me interesa venderte tecnología por venderla. Me interesa entender cómo funciona tu negocio y encontrar dónde la tecnología puede hacerte la vida más fácil.',
     ],
     'image': '/static/images/about.jpg',
 }
