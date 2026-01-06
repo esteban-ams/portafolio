@@ -314,45 +314,227 @@ curl -I https://status.esteban-ams.cl
 
 ## Agregar Nuevos Proyectos
 
-### 1. Crear Dockerfile para el nuevo proyecto
+### Checklist Rapido
+
+- [ ] Crear Dockerfile en el proyecto
+- [ ] Agregar servicio en `infrastructure/docker-compose.yml`
+- [ ] Agregar ruta local en `infrastructure/scripts/sync-and-deploy.sh`
+- [ ] Crear registro DNS en DigitalOcean (si es nuevo subdominio)
+- [ ] Sincronizar y desplegar
+
+---
+
+### Paso 1: Crear Dockerfile en tu proyecto
+
+#### Para FastHTML (Python)
 
 ```dockerfile
-FROM python:3.11-slim
+# Dockerfile
+FROM python:3.11-slim AS builder
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.11-slim AS runtime
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
-EXPOSE 8000
-CMD ["python", "main.py"]
+EXPOSE 5000
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
 ```
 
-### 2. Agregar al docker-compose.yml
+#### Para Django
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN python manage.py collectstatic --noinput
+EXPOSE 8000
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+```
+
+#### Para Node.js / Next.js
+
+```dockerfile
+# Dockerfile
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runtime
+WORKDIR /app
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+---
+
+### Paso 2: Agregar servicio en docker-compose.yml
+
+Edita `infrastructure/docker-compose.yml` y agrega tu nuevo servicio:
 
 ```yaml
-  mi-nuevo-proyecto:
+  # ===========================================================================
+  # AGENCYFLOW - Tu Nueva App
+  # Dominio: agencyflow.esteban-ams.cl
+  # ===========================================================================
+  agencyflow:
     build:
-      context: /opt/apps/mi-nuevo-proyecto
+      context: /opt/apps/agencyflow
       dockerfile: Dockerfile
-    container_name: mi-nuevo-proyecto
+    image: agencyflow:latest
+    container_name: agencyflow
     restart: unless-stopped
     networks:
       - traefik-public
+      # - internal  # Agregar si necesita acceso a PostgreSQL
+    environment:
+      - PORT=5000
+      - DEBUG=false
+      - TZ=America/Santiago
+      # Agregar variables especificas de tu app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mi-proyecto.rule=Host(`demo.esteban-ams.cl`)"
-      - "traefik.http.routers.mi-proyecto.entrypoints=websecure"
-      - "traefik.http.routers.mi-proyecto.tls.certresolver=letsencrypt"
-      - "traefik.http.services.mi-proyecto.loadbalancer.server.port=8000"
+      - "traefik.http.routers.agencyflow.rule=Host(`agencyflow.esteban-ams.cl`)"
+      - "traefik.http.routers.agencyflow.entrypoints=websecure"
+      - "traefik.http.routers.agencyflow.tls.certresolver=letsencrypt"
+      - "traefik.http.services.agencyflow.loadbalancer.server.port=5000"
       - "traefik.docker.network=traefik-public"
 ```
 
-### 3. Desplegar
+**Notas importantes:**
+- Cambia `agencyflow` por el nombre de tu proyecto (en minusculas, sin espacios)
+- El puerto debe coincidir con el EXPOSE del Dockerfile
+- Si necesita base de datos, agrega `- internal` en networks y `depends_on: postgres`
+
+---
+
+### Paso 3: Agregar al script de sincronizacion
+
+Edita `infrastructure/scripts/sync-and-deploy.sh`:
 
 ```bash
-docker compose up -d mi-nuevo-proyecto
+# Agregar ruta local (busca la seccion de rutas)
+LOCAL_AGENCYFLOW="/Users/estebanmartinezsoto/Development/agencyflow"
+
+# Agregar sincronizacion (busca donde se sincronizan los otros proyectos)
+sync_project "AgencyFlow" "$LOCAL_AGENCYFLOW" "$REMOTE_BASE/agencyflow"
 ```
 
-El certificado SSL se genera automaticamente.
+---
+
+### Paso 4: Crear registro DNS (si es nuevo subdominio)
+
+Ya tienes configurado un wildcard `*.esteban-ams.cl`, asi que cualquier subdominio nuevo funcionara automaticamente.
+
+Si quieres verificar:
+```bash
+dig agencyflow.esteban-ams.cl +short
+# Debe mostrar: 64.23.242.78
+```
+
+---
+
+### Paso 5: Desplegar
+
+```bash
+# Opcion A: Desplegar todo
+./infrastructure/scripts/sync-and-deploy.sh
+
+# Opcion B: Solo el nuevo proyecto
+rsync -avz --exclude '.git' --exclude '__pycache__' --exclude 'node_modules' \
+  ~/Development/agencyflow/ \
+  root@64.23.242.78:/opt/apps/agencyflow/
+
+ssh root@64.23.242.78 "cd /opt/infrastructure && docker compose up -d agencyflow"
+```
+
+---
+
+### Paso 6: Verificar
+
+```bash
+# Estado del contenedor
+ssh root@64.23.242.78 "cd /opt/infrastructure && docker compose ps agencyflow"
+
+# Logs
+ssh root@64.23.242.78 "docker logs agencyflow --tail 50"
+
+# Probar HTTPS
+curl -I https://agencyflow.esteban-ams.cl
+```
+
+---
+
+### Ejemplo Completo: Agregar AgencyFlow
+
+```bash
+# 1. Crear Dockerfile en ~/Development/agencyflow/Dockerfile
+
+# 2. Editar docker-compose.yml local
+code ~/Development/git_repos/portafolio/infrastructure/docker-compose.yml
+
+# 3. Editar sync-and-deploy.sh
+code ~/Development/git_repos/portafolio/infrastructure/scripts/sync-and-deploy.sh
+
+# 4. Sincronizar y desplegar
+cd ~/Development/git_repos/portafolio
+./infrastructure/scripts/sync-and-deploy.sh
+
+# 5. Verificar
+curl -I https://agencyflow.esteban-ams.cl
+```
+
+---
+
+### Apps con Base de Datos
+
+Si tu app necesita PostgreSQL:
+
+1. Agrega la red `internal` al servicio:
+```yaml
+networks:
+  - traefik-public
+  - internal
+```
+
+2. Agrega dependencia:
+```yaml
+depends_on:
+  postgres:
+    condition: service_healthy
+```
+
+3. Crea la base de datos:
+```bash
+ssh root@64.23.242.78 "docker exec postgres psql -U admin -c 'CREATE DATABASE agencyflow;'"
+```
+
+4. Configura la conexion en tu app:
+```
+DATABASE_URL=postgresql://admin:TU_PASSWORD@postgres:5432/agencyflow
+```
 
 ---
 
