@@ -1,0 +1,53 @@
+# =============================================================================
+# Traefik - Configuracion Dinamica: Security Headers
+# =============================================================================
+# Middlewares de seguridad reutilizables para todos los servicios
+# =============================================================================
+
+http:
+  middlewares:
+    # Headers de seguridad estandar
+    security-headers:
+      headers:
+        # Prevenir clickjacking
+        frameDeny: true
+        # Prevenir MIME type sniffing
+        contentTypeNosniff: true
+        # Habilitar XSS filter del navegador
+        browserXssFilter: true
+        # Referrer policy
+        referrerPolicy: "strict-origin-when-cross-origin"
+        # Content Security Policy (ajustar segun necesidades)
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com;
+          img-src 'self' data: https:;
+          connect-src 'self';
+          frame-ancestors 'none';
+        # HSTS (HTTP Strict Transport Security)
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        # Permisos del navegador
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+
+    # Rate limiting basico
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+
+    # Comprimir respuestas
+    compress:
+      compress:
+        excludedContentTypes:
+          - text/event-stream
+
+    # Retry en caso de error del backend
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms

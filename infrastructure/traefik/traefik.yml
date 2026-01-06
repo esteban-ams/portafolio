@@ -1,0 +1,95 @@
+# =============================================================================
+# Traefik - Configuracion Estatica
+# =============================================================================
+# Este archivo define la configuracion principal de Traefik
+# Los servicios se descubren automaticamente via labels de Docker
+# =============================================================================
+
+# Configuracion global
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# API y Dashboard
+api:
+  dashboard: true
+  insecure: false  # Dashboard solo accesible via HTTPS con auth
+
+# Logging
+log:
+  level: INFO
+  format: common
+
+# Access logs (opcional, util para debugging)
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "400-599"
+
+# Entrypoints (puertos de entrada)
+entryPoints:
+  # Puerto HTTP - Redirige a HTTPS
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  # Puerto HTTPS - Trafico principal
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: "esteban-ams.cl"
+            sans:
+              - "*.esteban-ams.cl"
+
+# Certificados SSL con Let's Encrypt
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      # Email para notificaciones de Let's Encrypt
+      email: "tu-email@esteban-ams.cl"  # CAMBIAR POR TU EMAIL REAL
+
+      # Archivo donde se guardan los certificados
+      storage: /certificates/acme.json
+
+      # Usar servidor de staging para testing (descomentar para produccion)
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+
+      # Challenge HTTP-01 (mas simple, funciona sin configuracion DNS)
+      httpChallenge:
+        entryPoint: web
+
+      # Challenge DNS-01 para wildcard (requiere API de DNS provider)
+      # dnsChallenge:
+      #   provider: digitalocean
+      #   delayBeforeCheck: 0
+
+# Provider: Docker
+providers:
+  # Descubrimiento automatico de servicios via Docker
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false  # Solo exponer servicios con traefik.enable=true
+    network: traefik-public
+    watch: true
+
+  # Configuracion dinamica desde archivos (opcional)
+  file:
+    directory: /dynamic
+    watch: true
+
+# =============================================================================
+# Configuracion de Seguridad Adicional
+# =============================================================================
+# Headers de seguridad se pueden agregar via middlewares en docker-compose
+# o en archivos de configuracion dinamica en /dynamic/
+# =============================================================================

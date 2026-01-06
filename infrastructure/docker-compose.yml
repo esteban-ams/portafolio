@@ -1,0 +1,261 @@
+# =============================================================================
+# Docker Compose - Infraestructura Multi-proyecto
+# Dominio: esteban-ams.cl
+# =============================================================================
+# Servicios incluidos:
+# - Traefik: Reverse proxy con SSL automatico (Let's Encrypt)
+# - PostgreSQL: Base de datos compartida
+# - Uptime Kuma: Monitoreo de servicios
+# - Portfolio: FastHTML (portafolio.esteban-ams.cl + esteban-ams.cl)
+# - Komercia: Django ERP (komercia.esteban-ams.cl)
+# - Metalurgica SPA: FastHTML (metalurgica.esteban-ams.cl)
+# =============================================================================
+
+networks:
+  # Red principal donde todos los servicios se comunican con Traefik
+  traefik-public:
+    external: true
+  # Red interna para base de datos (no expuesta a Traefik)
+  internal:
+    driver: bridge
+
+volumes:
+  # Volumenes persistentes
+  traefik-certificates:
+  postgres-data:
+  uptime-kuma-data:
+  komercia-media:
+  komercia-static:
+
+services:
+  # ===========================================================================
+  # TRAEFIK - Reverse Proxy & SSL Manager
+  # ===========================================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik-public
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - TZ=America/Santiago
+    volumes:
+      # Socket de Docker (solo lectura para seguridad)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Configuracion estatica de Traefik
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      # Configuracion dinamica (opcional, para reglas adicionales)
+      - ./traefik/dynamic:/dynamic:ro
+      # Certificados SSL persistentes
+      - traefik-certificates:/certificates
+    labels:
+      # Habilitar Traefik para este contenedor
+      - "traefik.enable=true"
+
+      # Dashboard de Traefik (opcional, protegido con auth)
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.esteban-ams.cl`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+
+      # Basic Auth para dashboard (usuario:password hasheado)
+      # Genera tu propio hash con: htpasswd -nb admin TU_PASSWORD_SEGURO
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+
+      # Middleware global para redirigir HTTP a HTTPS
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+
+  # ===========================================================================
+  # POSTGRESQL - Base de Datos Compartida
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Scripts de inicializacion (crear DBs adicionales)
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD requerido}
+      POSTGRES_DB: ${POSTGRES_DB:-main}
+      TZ: America/Santiago
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-main}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No exponemos puerto al exterior, solo red interna
+    # Para acceso de emergencia, usar: docker exec -it postgres psql -U admin
+
+  # ===========================================================================
+  # UPTIME KUMA - Monitoreo de Servicios
+  # ===========================================================================
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    networks:
+      - traefik-public
+      - internal
+    volumes:
+      - uptime-kuma-data:/app/data
+    environment:
+      - TZ=America/Santiago
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.rule=Host(`status.esteban-ams.cl`)"
+      - "traefik.http.routers.uptime.entrypoints=websecure"
+      - "traefik.http.routers.uptime.tls.certresolver=letsencrypt"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik-public"
+
+  # ===========================================================================
+  # PORTFOLIO - FastHTML Principal
+  # Dominios: portafolio.esteban-ams.cl, esteban-ams.cl, www.esteban-ams.cl
+  # ===========================================================================
+  portfolio:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    image: portfolio:latest
+    container_name: portfolio
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    environment:
+      - PORT=5001
+      - DEBUG=false
+      - TZ=America/Santiago
+      # Variables de tu aplicacion (email, etc)
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - CONTACT_EMAIL=${CONTACT_EMAIL:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+
+      # Ruta principal: portafolio.esteban-ams.cl
+      - "traefik.http.routers.portfolio.rule=Host(`portafolio.esteban-ams.cl`)"
+      - "traefik.http.routers.portfolio.entrypoints=websecure"
+      - "traefik.http.routers.portfolio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portfolio.loadbalancer.server.port=5001"
+
+      # Tambien responder en el dominio principal
+      - "traefik.http.routers.portfolio-main.rule=Host(`esteban-ams.cl`) || Host(`www.esteban-ams.cl`)"
+      - "traefik.http.routers.portfolio-main.entrypoints=websecure"
+      - "traefik.http.routers.portfolio-main.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.portfolio-main.service=portfolio"
+
+      # Red de Traefik
+      - "traefik.docker.network=traefik-public"
+
+  # ===========================================================================
+  # KOMERCIA - Django ERP
+  # Dominio: komercia.esteban-ams.cl
+  # ===========================================================================
+  komercia:
+    build:
+      context: /opt/apps/komercia
+      dockerfile: Dockerfile
+    image: komercia:latest
+    container_name: komercia
+    restart: unless-stopped
+    networks:
+      - traefik-public
+      - internal
+    volumes:
+      - komercia-media:/app/media
+      - komercia-static:/app/staticfiles
+    environment:
+      - DEBUG=False
+      - TZ=America/Santiago
+      - SECRET_KEY=${KOMERCIA_SECRET_KEY:?Error: KOMERCIA_SECRET_KEY requerido}
+      - ALLOWED_HOSTS=komercia.esteban-ams.cl,localhost
+      # Conexion a PostgreSQL compartido
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@postgres:5432/komercia
+      # Variables adicionales de Django
+      - CSRF_TRUSTED_ORIGINS=https://komercia.esteban-ams.cl
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.komercia.rule=Host(`komercia.esteban-ams.cl`)"
+      - "traefik.http.routers.komercia.entrypoints=websecure"
+      - "traefik.http.routers.komercia.tls.certresolver=letsencrypt"
+      - "traefik.http.services.komercia.loadbalancer.server.port=8000"
+      - "traefik.docker.network=traefik-public"
+
+  # ===========================================================================
+  # METALURGICA SPA - FastHTML Landing Page
+  # Dominio: metalurgica.esteban-ams.cl
+  # ===========================================================================
+  metalurgica:
+    build:
+      context: /opt/apps/metalurgica-spa
+      dockerfile: Dockerfile
+    image: metalurgica:latest
+    container_name: metalurgica
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    environment:
+      - PORT=5002
+      - DEBUG=false
+      - TZ=America/Santiago
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.metalurgica.rule=Host(`metalurgica.esteban-ams.cl`)"
+      - "traefik.http.routers.metalurgica.entrypoints=websecure"
+      - "traefik.http.routers.metalurgica.tls.certresolver=letsencrypt"
+      - "traefik.http.services.metalurgica.loadbalancer.server.port=5002"
+      - "traefik.docker.network=traefik-public"
+
+# =============================================================================
+# NOTAS DE CONFIGURACION
+# =============================================================================
+# 1. Crear archivo .env con las siguientes variables:
+#    - POSTGRES_USER=admin
+#    - POSTGRES_PASSWORD=<password_seguro>
+#    - POSTGRES_DB=main
+#    - TRAEFIK_DASHBOARD_AUTH=<hash_htpasswd>
+#    - KOMERCIA_SECRET_KEY=<django_secret_key>
+#    - RESEND_API_KEY=<api_key_opcional>
+#    - CONTACT_EMAIL=<email_contacto>
+#
+# 2. Crear red externa antes de iniciar:
+#    docker network create traefik-public
+#
+# 3. Asegurar que el script init-databases.sql cree la DB 'komercia':
+#    CREATE DATABASE komercia;
+#
+# 4. Los contextos de build apuntan a /opt/apps/ en el servidor
+#    Sincronizar repos ahi antes del deploy
+# =============================================================================
