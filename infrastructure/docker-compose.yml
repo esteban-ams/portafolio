@@ -4,12 +4,13 @@
 # =============================================================================
 # Servicios incluidos:
 # - Traefik: Reverse proxy con SSL automatico (Let's Encrypt)
+# - Watchtower: Auto-update de imagenes desde GHCR
 # - PostgreSQL: Base de datos compartida
 # - Uptime Kuma: Monitoreo de servicios
 # - Portfolio: FastHTML (portafolio.esteban-ams.cl + esteban-ams.cl)
-# - Komercia: Django ERP (komercia.esteban-ams.cl)
+# - Komercia Cloud: Django ERP desde GHCR (app.komercia.esteban-ams.cl)
+# - Komercia Landing: FastHTML desde GHCR (komercia.esteban-ams.cl)
 # - Metalurgica SPA: FastHTML (metalurgica.esteban-ams.cl)
-# - Komercia Landing: FastHTML (landing-komercia.esteban-ams.cl)
 # =============================================================================
 
 networks:
@@ -74,6 +75,38 @@ services:
       - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
 
   # ===========================================================================
+  # WATCHTOWER - Auto-update de imagenes desde registries
+  # ===========================================================================
+  # Monitorea imagenes y actualiza automaticamente cuando hay nuevas versiones
+  # Solo actualiza contenedores con label "com.centurylinklabs.watchtower.enable=true"
+  # ===========================================================================
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Credenciales para registries privados (GHCR)
+      - /root/.docker/config.json:/config.json:ro
+    environment:
+      - TZ=America/Santiago
+      # Intervalo de verificacion (300s = 5 minutos)
+      - WATCHTOWER_POLL_INTERVAL=300
+      # Solo actualizar contenedores con label habilitado
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Limpiar imagenes antiguas despues de actualizar
+      - WATCHTOWER_CLEANUP=true
+      # Incluir contenedores detenidos
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      # Notificaciones (opcional - configurar con Slack/Discord/Email)
+      # - WATCHTOWER_NOTIFICATIONS=slack
+      # - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=${SLACK_WEBHOOK_URL:-}
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"  # No auto-actualizar watchtower
+
+  # ===========================================================================
   # POSTGRESQL - Base de Datos Compartida
   # ===========================================================================
   postgres:
@@ -96,6 +129,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"  # No auto-actualizar DB
     # No exponemos puerto al exterior, solo red interna
     # Para acceso de emergencia, usar: docker exec -it postgres psql -U admin
 
@@ -120,11 +155,13 @@ services:
       - "traefik.http.routers.uptime.tls.certresolver=letsencrypt"
       - "traefik.http.services.uptime.loadbalancer.server.port=3001"
       - "traefik.docker.network=traefik-public"
+      - "com.centurylinklabs.watchtower.enable=false"  # Actualizar manualmente
 
   # ===========================================================================
-  # PORTFOLIO - FastHTML Principal
+  # PORTFOLIO - FastHTML Principal (Build local por ahora)
   # Dominios: portafolio.esteban-ams.cl, esteban-ams.cl, www.esteban-ams.cl
   # ===========================================================================
+  # TODO: Migrar a GHCR cuando se configure el workflow
   portfolio:
     build:
       context: ../
@@ -164,16 +201,15 @@ services:
 
       # Red de Traefik
       - "traefik.docker.network=traefik-public"
+      - "com.centurylinklabs.watchtower.enable=false"  # TODO: Cambiar a true cuando migre a GHCR
 
   # ===========================================================================
-  # KOMERCIA CLOUD - Django ERP (SaaS)
+  # KOMERCIA CLOUD - Django ERP (SaaS) - DESDE GHCR
   # Dominio: app.komercia.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/erp-market-django:latest
   # ===========================================================================
   komercia:
-    build:
-      context: /opt/apps/komercia
-      dockerfile: Dockerfile
-    image: komercia:latest
+    image: ghcr.io/esteban-ams/erp-market-django:latest
     container_name: komercia
     restart: unless-stopped
     networks:
@@ -207,11 +243,14 @@ services:
       - "traefik.http.routers.komercia.tls.certresolver=letsencrypt"
       - "traefik.http.services.komercia.loadbalancer.server.port=8000"
       - "traefik.docker.network=traefik-public"
+      # Habilitar auto-update con Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # ===========================================================================
-  # METALURGICA SPA - FastHTML Landing Page
+  # METALURGICA SPA - FastHTML Landing Page (Build local por ahora)
   # Dominio: metalurgica.esteban-ams.cl
   # ===========================================================================
+  # TODO: Migrar a GHCR cuando se configure el workflow
   metalurgica:
     build:
       context: /opt/apps/metalurgica-spa
@@ -238,16 +277,15 @@ services:
       - "traefik.http.routers.metalurgica.tls.certresolver=letsencrypt"
       - "traefik.http.services.metalurgica.loadbalancer.server.port=5002"
       - "traefik.docker.network=traefik-public"
+      - "com.centurylinklabs.watchtower.enable=false"  # TODO: Cambiar a true cuando migre a GHCR
 
   # ===========================================================================
-  # KOMERCIA LANDING - FastHTML Landing Page
+  # KOMERCIA LANDING - FastHTML Landing Page - DESDE GHCR
   # Dominio: komercia.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/komercia-landing:latest
   # ===========================================================================
   komercia-landing:
-    build:
-      context: /opt/apps/komercia-landing
-      dockerfile: Dockerfile
-    image: komercia-landing:latest
+    image: ghcr.io/esteban-ams/komercia-landing:latest
     container_name: komercia-landing
     restart: unless-stopped
     networks:
@@ -271,6 +309,8 @@ services:
       - "traefik.http.routers.komercia-landing.tls.certresolver=letsencrypt"
       - "traefik.http.services.komercia-landing.loadbalancer.server.port=5003"
       - "traefik.docker.network=traefik-public"
+      # Habilitar auto-update con Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
 
 # =============================================================================
 # NOTAS DE CONFIGURACION
@@ -290,6 +330,10 @@ services:
 # 3. Asegurar que el script init-databases.sql cree la DB 'komercia':
 #    CREATE DATABASE komercia;
 #
-# 4. Los contextos de build apuntan a /opt/apps/ en el servidor
-#    Sincronizar repos ahi antes del deploy
+# 4. Configurar autenticacion con GHCR en el servidor:
+#    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+#    (El token necesita permiso read:packages)
+#
+# 5. Watchtower verificara cada 5 minutos si hay nuevas imagenes
+#    Solo actualiza contenedores con label watchtower.enable=true
 # =============================================================================
