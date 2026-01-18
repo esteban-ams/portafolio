@@ -9,6 +9,7 @@
 # - Portfolio: FastHTML (portafolio.esteban-ams.cl + esteban-ams.cl)
 # - Komercia: Django ERP (komercia.esteban-ams.cl)
 # - Metalurgica SPA: FastHTML (metalurgica.esteban-ams.cl)
+# - Komercia Landing: FastHTML (landing-komercia.esteban-ams.cl)
 # =============================================================================
 
 networks:
@@ -32,7 +33,7 @@ services:
   # TRAEFIK - Reverse Proxy & SSL Manager
   # ===========================================================================
   traefik:
-    image: traefik:v3.0
+    image: traefik:v2.11
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -87,7 +88,7 @@ services:
       - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD requerido}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error - POSTGRES_PASSWORD requerido}"
       POSTGRES_DB: ${POSTGRES_DB:-main}
       TZ: America/Santiago
     healthcheck:
@@ -141,7 +142,7 @@ services:
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - CONTACT_EMAIL=${CONTACT_EMAIL:-}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -165,8 +166,8 @@ services:
       - "traefik.docker.network=traefik-public"
 
   # ===========================================================================
-  # KOMERCIA - Django ERP
-  # Dominio: komercia.esteban-ams.cl
+  # KOMERCIA CLOUD - Django ERP (SaaS)
+  # Dominio: app.komercia.esteban-ams.cl
   # ===========================================================================
   komercia:
     build:
@@ -184,24 +185,24 @@ services:
     environment:
       - DEBUG=False
       - TZ=America/Santiago
-      - SECRET_KEY=${KOMERCIA_SECRET_KEY:?Error: KOMERCIA_SECRET_KEY requerido}
-      - ALLOWED_HOSTS=komercia.esteban-ams.cl,localhost
+      - SECRET_KEY=${KOMERCIA_SECRET_KEY:?Error - KOMERCIA_SECRET_KEY requerido}
+      - DJANGO_ALLOWED_HOSTS=app.komercia.esteban-ams.cl,localhost
       # Conexion a PostgreSQL compartido
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@postgres:5432/komercia
+      - DB_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@postgres:5432/komercia
       # Variables adicionales de Django
-      - CSRF_TRUSTED_ORIGINS=https://komercia.esteban-ams.cl
+      - CSRF_TRUSTED_ORIGINS=https://app.komercia.esteban-ams.cl
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/admin/login/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.komercia.rule=Host(`komercia.esteban-ams.cl`)"
+      - "traefik.http.routers.komercia.rule=Host(`app.komercia.esteban-ams.cl`)"
       - "traefik.http.routers.komercia.entrypoints=websecure"
       - "traefik.http.routers.komercia.tls.certresolver=letsencrypt"
       - "traefik.http.services.komercia.loadbalancer.server.port=8000"
@@ -225,7 +226,7 @@ services:
       - DEBUG=false
       - TZ=America/Santiago
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -236,6 +237,39 @@ services:
       - "traefik.http.routers.metalurgica.entrypoints=websecure"
       - "traefik.http.routers.metalurgica.tls.certresolver=letsencrypt"
       - "traefik.http.services.metalurgica.loadbalancer.server.port=5002"
+      - "traefik.docker.network=traefik-public"
+
+  # ===========================================================================
+  # KOMERCIA LANDING - FastHTML Landing Page
+  # Dominio: komercia.esteban-ams.cl
+  # ===========================================================================
+  komercia-landing:
+    build:
+      context: /opt/apps/komercia-landing
+      dockerfile: Dockerfile
+    image: komercia-landing:latest
+    container_name: komercia-landing
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    environment:
+      - PORT=5003
+      - DEBUG=false
+      - TZ=America/Santiago
+      # Variables opcionales para contacto (Resend)
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.komercia-landing.rule=Host(`komercia.esteban-ams.cl`)"
+      - "traefik.http.routers.komercia-landing.entrypoints=websecure"
+      - "traefik.http.routers.komercia-landing.tls.certresolver=letsencrypt"
+      - "traefik.http.services.komercia-landing.loadbalancer.server.port=5003"
       - "traefik.docker.network=traefik-public"
 
 # =============================================================================
