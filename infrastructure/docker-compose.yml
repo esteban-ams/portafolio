@@ -247,15 +247,12 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
   # ===========================================================================
-  # METALURGICA SPA - FastHTML Landing Page (Build local por ahora)
+  # METALURGICA SPA - FastHTML Landing Page - DESDE GHCR
   # Dominio: metalurgica.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/metalurgica-spa:latest
   # ===========================================================================
-  # TODO: Migrar a GHCR cuando se configure el workflow
   metalurgica:
-    build:
-      context: /opt/apps/metalurgica-spa
-      dockerfile: Dockerfile
-    image: metalurgica:latest
+    image: ghcr.io/esteban-ams/metalurgica-spa:latest
     container_name: metalurgica
     restart: unless-stopped
     networks:
@@ -277,7 +274,8 @@ services:
       - "traefik.http.routers.metalurgica.tls.certresolver=letsencrypt"
       - "traefik.http.services.metalurgica.loadbalancer.server.port=5002"
       - "traefik.docker.network=traefik-public"
-      - "com.centurylinklabs.watchtower.enable=false"  # TODO: Cambiar a true cuando migre a GHCR
+      # Habilitar auto-update con Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # ===========================================================================
   # KOMERCIA LANDING - FastHTML Landing Page - DESDE GHCR
