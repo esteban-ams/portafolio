@@ -4,7 +4,8 @@
 # =============================================================================
 # Servicios incluidos:
 # - Traefik: Reverse proxy con SSL automatico (Let's Encrypt)
-# - Watchtower: Auto-update de imagenes desde GHCR
+# - FastShip: Webhook server para deploys instantaneos desde CI/CD
+# - Watchtower: [DEPRECADO] Auto-update de imagenes desde GHCR
 # - PostgreSQL: Base de datos compartida
 # - Uptime Kuma: Monitoreo de servicios
 # - Portfolio: FastHTML (portafolio.esteban-ams.cl + esteban-ams.cl)
@@ -75,7 +76,49 @@ services:
       - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
 
   # ===========================================================================
-  # WATCHTOWER - Auto-update de imagenes desde registries
+  # FASTSHIP - Webhook Server para Deploys Instantaneos
+  # ===========================================================================
+  # Recibe webhooks desde GitHub Actions y despliega automaticamente
+  # Reemplaza a Watchtower con deploys instantaneos en lugar de polling
+  # Dashboard disponible en: deploy.esteban-ams.cl
+  # ===========================================================================
+  fastship:
+    image: ghcr.io/esteban-ams/fastship:latest
+    container_name: fastship
+    restart: unless-stopped
+    networks:
+      - traefik-public
+      - internal
+    volumes:
+      # Socket de Docker para gestionar contenedores
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Configuracion de FastShip
+      - ./fastship/config.yaml:/app/config.yaml:ro
+      # Montar el directorio de infraestructura para docker compose
+      - ./:/infrastructure:ro
+    environment:
+      - TZ=America/Santiago
+      - FASTSHIP_CONFIG=/app/config.yaml
+      # Secreto para verificar webhooks (mismo configurado en GitHub Actions)
+      - FASTSHIP_WEBHOOK_SECRET=${FASTSHIP_SECRET:?Error - FASTSHIP_SECRET requerido}
+      # Password del dashboard (opcional, puede usar el de config.yaml)
+      - FASTSHIP_DASHBOARD_PASSWORD=${FASTSHIP_DASHBOARD_PASSWORD:-admin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fastship.rule=Host(`deploy.esteban-ams.cl`)"
+      - "traefik.http.routers.fastship.entrypoints=websecure"
+      - "traefik.http.routers.fastship.tls.certresolver=letsencrypt"
+      - "traefik.http.services.fastship.loadbalancer.server.port=9000"
+      - "traefik.docker.network=traefik-public"
+      # No auto-actualizar FastShip con Watchtower
+      - "com.centurylinklabs.watchtower.enable=false"
+
+  # ===========================================================================
+  # WATCHTOWER - Auto-update de imagenes desde registries [DEPRECADO]
+  # ===========================================================================
+  # NOTA: Watchtower esta siendo reemplazado por FastShip.
+  # Una vez que todos los workflows de CI/CD esten configurados con FastShip,
+  # puedes eliminar este servicio de forma segura.
   # ===========================================================================
   # Monitorea imagenes y actualiza automaticamente cuando hay nuevas versiones
   # Solo actualiza contenedores con label "com.centurylinklabs.watchtower.enable=true"
@@ -321,6 +364,8 @@ services:
 #    - KOMERCIA_SECRET_KEY=<django_secret_key>
 #    - RESEND_API_KEY=<api_key_opcional>
 #    - CONTACT_EMAIL=<email_contacto>
+#    - FASTSHIP_SECRET=<secreto_64_hex> (openssl rand -hex 32)
+#    - FASTSHIP_DASHBOARD_PASSWORD=<password_dashboard>
 #
 # 2. Crear red externa antes de iniciar:
 #    docker network create traefik-public
@@ -332,6 +377,10 @@ services:
 #    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 #    (El token necesita permiso read:packages)
 #
-# 5. Watchtower verificara cada 5 minutos si hay nuevas imagenes
-#    Solo actualiza contenedores con label watchtower.enable=true
+# 5. FastShip recibe webhooks desde CI/CD para despliegues instantaneos
+#    Dashboard disponible en: https://deploy.esteban-ams.cl
+#    Documentacion: infrastructure/docs/FASTSHIP_INTEGRATION.md
+#
+# 6. [DEPRECADO] Watchtower sera removido una vez FastShip este en produccion
+#    Por ahora ambos pueden coexistir, FastShip tiene prioridad
 # =============================================================================

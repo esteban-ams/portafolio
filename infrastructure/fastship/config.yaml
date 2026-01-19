@@ -1,0 +1,111 @@
+# =============================================================================
+# FastShip - Configuracion de Despliegue Automatizado
+# =============================================================================
+# Este archivo configura FastShip para gestionar deploys via webhook
+# Reemplaza a Watchtower con despliegues instantaneos desde CI/CD
+# =============================================================================
+
+server:
+  port: 9000
+  host: "0.0.0.0"
+
+auth:
+  # IMPORTANTE: Genera un secreto seguro con: openssl rand -hex 32
+  # Este valor se sobrescribe con la variable de entorno FASTSHIP_WEBHOOK_SECRET
+  webhook_secret: "${FASTSHIP_SECRET}"
+
+# Dashboard web para ver historial de deploys y ejecutar deploys manuales
+dashboard:
+  enabled: true
+  # Usuario y password para acceder al dashboard
+  # NOTA: Traefik tambien puede agregar basic auth como capa adicional
+  username: "admin"
+  # Este valor se sobrescribe con la variable de entorno FASTSHIP_DASHBOARD_PASSWORD
+  password: "${FASTSHIP_DASHBOARD_PASSWORD}"
+
+logging:
+  level: "info"
+  format: "json"
+
+# =============================================================================
+# SERVICIOS CONFIGURADOS
+# =============================================================================
+# Cada servicio corresponde a un contenedor que puede ser desplegado
+# via webhook desde GitHub Actions u otro CI/CD
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Portfolio - FastHTML
+  # Dominio: portafolio.esteban-ams.cl, esteban-ams.cl
+  # ---------------------------------------------------------------------------
+  portfolio:
+    compose_file: "/infrastructure/docker-compose.yml"
+    service_name: "portfolio"
+    working_dir: "/infrastructure"
+    health_check:
+      enabled: true
+      url: "http://portfolio:5001/"
+      timeout: 30s
+      interval: 2s
+      retries: 10
+    rollback:
+      enabled: true
+      keep_images: 3
+
+  # ---------------------------------------------------------------------------
+  # Komercia Cloud - Django ERP
+  # Dominio: app.komercia.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/erp-market-django:latest
+  # ---------------------------------------------------------------------------
+  komercia:
+    compose_file: "/infrastructure/docker-compose.yml"
+    service_name: "komercia"
+    working_dir: "/infrastructure"
+    health_check:
+      enabled: true
+      url: "http://komercia:8000/admin/login/"
+      timeout: 60s
+      interval: 3s
+      retries: 15
+    rollback:
+      enabled: true
+      keep_images: 3
+
+  # ---------------------------------------------------------------------------
+  # Komercia Landing - FastHTML
+  # Dominio: komercia.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/komercia-landing:latest
+  # ---------------------------------------------------------------------------
+  komercia-landing:
+    compose_file: "/infrastructure/docker-compose.yml"
+    service_name: "komercia-landing"
+    working_dir: "/infrastructure"
+    health_check:
+      enabled: true
+      url: "http://komercia-landing:5003/"
+      timeout: 30s
+      interval: 2s
+      retries: 10
+    rollback:
+      enabled: true
+      keep_images: 3
+
+  # ---------------------------------------------------------------------------
+  # Metalurgica SPA - FastHTML
+  # Dominio: metalurgica.esteban-ams.cl
+  # Imagen: ghcr.io/esteban-ams/metalurgica-spa:latest
+  # ---------------------------------------------------------------------------
+  metalurgica:
+    compose_file: "/infrastructure/docker-compose.yml"
+    service_name: "metalurgica"
+    working_dir: "/infrastructure"
+    health_check:
+      enabled: true
+      url: "http://metalurgica:5002/"
+      timeout: 30s
+      interval: 2s
+      retries: 10
+    rollback:
+      enabled: true
+      keep_images: 3
