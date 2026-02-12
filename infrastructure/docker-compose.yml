@@ -5,7 +5,7 @@
 # Servicios incluidos:
 # - Traefik: Reverse proxy con SSL automatico (Let's Encrypt)
 # - FastShip: Webhook server para deploys instantaneos desde CI/CD
-# - Watchtower: [DEPRECADO] Auto-update de imagenes desde GHCR
+# - Watchtower: [REMOVIDO] Reemplazado por FastShip
 # - PostgreSQL: Base de datos compartida
 # - Uptime Kuma: Monitoreo de servicios
 # - Portfolio: FastHTML (portafolio.esteban-ams.cl + esteban-ams.cl)
@@ -112,42 +112,6 @@ services:
       - "traefik.docker.network=traefik-public"
       # No auto-actualizar FastShip con Watchtower
       - "com.centurylinklabs.watchtower.enable=false"
-
-  # ===========================================================================
-  # WATCHTOWER - Auto-update de imagenes desde registries [DEPRECADO]
-  # ===========================================================================
-  # NOTA: Watchtower esta siendo reemplazado por FastShip.
-  # Una vez que todos los workflows de CI/CD esten configurados con FastShip,
-  # puedes eliminar este servicio de forma segura.
-  # ===========================================================================
-  # Monitorea imagenes y actualiza automaticamente cuando hay nuevas versiones
-  # Solo actualiza contenedores con label "com.centurylinklabs.watchtower.enable=true"
-  # ===========================================================================
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: watchtower
-    restart: unless-stopped
-    networks:
-      - internal
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Credenciales para registries privados (GHCR)
-      - /root/.docker/config.json:/config.json:ro
-    environment:
-      - TZ=America/Santiago
-      # Intervalo de verificacion (300s = 5 minutos)
-      - WATCHTOWER_POLL_INTERVAL=300
-      # Solo actualizar contenedores con label habilitado
-      - WATCHTOWER_LABEL_ENABLE=true
-      # Limpiar imagenes antiguas despues de actualizar
-      - WATCHTOWER_CLEANUP=true
-      # Incluir contenedores detenidos
-      - WATCHTOWER_INCLUDE_STOPPED=false
-      # Notificaciones (opcional - configurar con Slack/Discord/Email)
-      # - WATCHTOWER_NOTIFICATIONS=slack
-      # - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=${SLACK_WEBHOOK_URL:-}
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"  # No auto-actualizar watchtower
 
   # ===========================================================================
   # POSTGRESQL - Base de Datos Compartida
@@ -286,8 +250,7 @@ services:
       - "traefik.http.routers.komercia.tls.certresolver=letsencrypt"
       - "traefik.http.services.komercia.loadbalancer.server.port=8000"
       - "traefik.docker.network=traefik-public"
-      # Habilitar auto-update con Watchtower
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
 
   # ===========================================================================
   # METALURGICA SPA - FastHTML Landing Page - DESDE GHCR
@@ -317,8 +280,7 @@ services:
       - "traefik.http.routers.metalurgica.tls.certresolver=letsencrypt"
       - "traefik.http.services.metalurgica.loadbalancer.server.port=5002"
       - "traefik.docker.network=traefik-public"
-      # Habilitar auto-update con Watchtower
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
 
   # ===========================================================================
   # KOMERCIA LANDING - FastHTML Landing Page - DESDE GHCR
@@ -350,8 +312,7 @@ services:
       - "traefik.http.routers.komercia-landing.tls.certresolver=letsencrypt"
       - "traefik.http.services.komercia-landing.loadbalancer.server.port=5003"
       - "traefik.docker.network=traefik-public"
-      # Habilitar auto-update con Watchtower
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
 
 # =============================================================================
 # NOTAS DE CONFIGURACION
@@ -381,6 +342,5 @@ services:
 #    Dashboard disponible en: https://deploy.esteban-ams.cl
 #    Documentacion: infrastructure/docs/FASTSHIP_INTEGRATION.md
 #
-# 6. [DEPRECADO] Watchtower sera removido una vez FastShip este en produccion
-#    Por ahora ambos pueden coexistir, FastShip tiene prioridad
+# 6. Watchtower ha sido removido. FastShip gestiona todos los deployments
 # =============================================================================
